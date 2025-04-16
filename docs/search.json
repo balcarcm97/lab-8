@@ -5,5 +5,75 @@
     "title": "About",
     "section": "",
     "text": "About this site\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Lab 8",
+    "section": "",
+    "text": "library(tidyverse)\n\n── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──\n✔ dplyr     1.1.4     ✔ readr     2.1.5\n✔ forcats   1.0.0     ✔ stringr   1.5.1\n✔ ggplot2   3.5.1     ✔ tibble    3.2.1\n✔ lubridate 1.9.4     ✔ tidyr     1.3.1\n✔ purrr     1.0.4     \n── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──\n✖ dplyr::filter() masks stats::filter()\n✖ dplyr::lag()    masks stats::lag()\nℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors\n\nlibrary(tidymodels)\n\n── Attaching packages ────────────────────────────────────── tidymodels 1.3.0 ──\n✔ broom        1.0.7     ✔ rsample      1.2.1\n✔ dials        1.4.0     ✔ tune         1.3.0\n✔ infer        1.0.7     ✔ workflows    1.2.0\n✔ modeldata    1.4.0     ✔ workflowsets 1.1.0\n✔ parsnip      1.3.1     ✔ yardstick    1.3.2\n✔ recipes      1.2.0     \n── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──\n✖ scales::discard() masks purrr::discard()\n✖ dplyr::filter()   masks stats::filter()\n✖ recipes::fixed()  masks stringr::fixed()\n✖ dplyr::lag()      masks stats::lag()\n✖ yardstick::spec() masks readr::spec()\n✖ recipes::step()   masks stats::step()\n\nlibrary(powerjoin)\nlibrary(glue)\nlibrary(vip)\n\n\nAttaching package: 'vip'\n\nThe following object is masked from 'package:utils':\n\n    vi\n\nlibrary(baguette)"
+  },
+  {
+    "objectID": "index.html#reading-in-data",
+    "href": "index.html#reading-in-data",
+    "title": "Lab 8",
+    "section": "Reading in data",
+    "text": "Reading in data\n\nroot  &lt;- 'https://gdex.ucar.edu/dataset/camels/file'\n\n\ndownload.file('https://gdex.ucar.edu/dataset/camels/file/camels_attributes_v2.0.pdf', \n              'data/camels_attributes_v2.0.pdf')\n\n\ntypes &lt;- c(\"clim\", \"geol\", \"soil\", \"topo\", \"vege\", \"hydro\")\nremote_files  &lt;- glue('{root}/camels_{types}.txt')\nlocal_files   &lt;- glue('data/camels_{types}.txt')\nwalk2(remote_files, local_files, download.file, quiet = TRUE)\ncamels &lt;- map(local_files, read_delim, show_col_types = FALSE) \ncamels &lt;- power_full_join(camels ,by = 'gauge_id')\ncamels &lt;- map(remote_files, read_delim, show_col_types = FALSE) |&gt; \n  power_full_join(by = 'gauge_id')"
+  },
+  {
+    "objectID": "index.html#cleaning-data",
+    "href": "index.html#cleaning-data",
+    "title": "Lab 8",
+    "section": "Cleaning data",
+    "text": "Cleaning data\n\nvisdat::vis_dat(camels)\n\n\n\n\n\n\n\n\n\ncleaned_camels &lt;- camels %&gt;% \n  drop_na()\n\ncleaned_camels &lt;- cleaned_camels %&gt;%  \n  mutate(logQmean = log(q_mean))\n\nvisdat::vis_dat(cleaned_camels)"
+  },
+  {
+    "objectID": "index.html#set-seed-initial-split-trainingtesting",
+    "href": "index.html#set-seed-initial-split-trainingtesting",
+    "title": "Lab 8",
+    "section": "Set seed, initial split, training/testing",
+    "text": "Set seed, initial split, training/testing\n\nset.seed(666)\n\nCC_split &lt;- initial_split(cleaned_camels, prop = .80)\nCC_train &lt;- training(CC_split)\nCC_test &lt;- testing(CC_split)"
+  },
+  {
+    "objectID": "index.html#recipe-determination",
+    "href": "index.html#recipe-determination",
+    "title": "Lab 8",
+    "section": "Recipe determination",
+    "text": "Recipe determination\n\nggplot(cleaned_camels, aes(x = q_mean, y = high_prec_freq)) +\n  geom_point(color = \"blue\") +\n  geom_smooth(method = \"lm\", color = \"red\") +\n  labs(title = \"Q Mean vs High Precip Frequency\",\n       x = \"Q Mean\",\n       y = \"High Precip Frequency\")\n\n`geom_smooth()` using formula = 'y ~ x'\n\n\n\n\n\n\n\n\ncor(cleaned_camels$q_mean, cleaned_camels$high_prec_freq, method = \"pearson\")\n\n[1] -0.6935412\n\ncor.test(cleaned_camels$q_mean, cleaned_camels$high_prec_freq)\n\n\n    Pearson's product-moment correlation\n\ndata:  cleaned_camels$q_mean and cleaned_camels$high_prec_freq\nt = -21.634, df = 505, p-value &lt; 2.2e-16\nalternative hypothesis: true correlation is not equal to 0\n95 percent confidence interval:\n -0.7361629 -0.6454402\nsample estimates:\n       cor \n-0.6935412"
+  },
+  {
+    "objectID": "index.html#makin-a-recipe",
+    "href": "index.html#makin-a-recipe",
+    "title": "Lab 8",
+    "section": "Makin a recipe",
+    "text": "Makin a recipe\n\nCC_recipe &lt;- recipe(high_prec_freq ~ q_mean, data = CC_train) %&gt;%\n  step_normalize(all_predictors())"
+  },
+  {
+    "objectID": "index.html#build-samples",
+    "href": "index.html#build-samples",
+    "title": "Lab 8",
+    "section": "1. Build Samples",
+    "text": "1. Build Samples\n\nCC_folds &lt;- vfold_cv(CC_train, v = 10)"
+  },
+  {
+    "objectID": "index.html#build-3-candidate-models",
+    "href": "index.html#build-3-candidate-models",
+    "title": "Lab 8",
+    "section": "2. Build 3 Candidate Models",
+    "text": "2. Build 3 Candidate Models\n\nlinear_model &lt;- \n  linear_reg() %&gt;%\n  set_engine(\"lm\") %&gt;%\n  set_mode(\"regression\")\n\n\nrf_model &lt;- \n  rand_forest(mtry = 1, trees = 500, min_n = 5) %&gt;%\n  set_engine(\"ranger\") %&gt;%\n  set_mode(\"regression\")\n\n\nboost_model &lt;- \n  boost_tree(trees = 500, \n             learn_rate = 0.1, \n             tree_depth = 6, \n             loss_reduction = 0.01) %&gt;%\n  set_engine(\"xgboost\") %&gt;%\n  set_mode(\"regression\")"
+  },
+  {
+    "objectID": "index.html#test-the-models",
+    "href": "index.html#test-the-models",
+    "title": "Lab 8",
+    "section": "3. Test the Models",
+    "text": "3. Test the Models\n\nmodels &lt;- list(linear_model, rf_model, boost_model)\nworkflow_set &lt;- workflow_set(\n  preproc = list(CC_recipe),\n  models = models\n)\n\n\nresults &lt;- workflow_map(\n  workflow_set,\n  resamples = CC_folds,\n  metrics = metric_set(rmse, rsq),\n  verbose = TRUE\n)\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 1 of 3 resampling: recipe_linear_reg\n\n\n✔ 1 of 3 resampling: recipe_linear_reg (185ms)\n\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 2 of 3 resampling: recipe_rand_forest\n\n\n✔ 2 of 3 resampling: recipe_rand_forest (842ms)\n\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 3 of 3 resampling: recipe_boost_tree\n\n\n✔ 3 of 3 resampling: recipe_boost_tree (808ms)\n\nautoplot(results)"
+  },
+  {
+    "objectID": "index.html#model-selection",
+    "href": "index.html#model-selection",
+    "title": "Lab 8",
+    "section": "4. Model Selection",
+    "text": "4. Model Selection"
   }
 ]

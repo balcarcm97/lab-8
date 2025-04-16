@@ -6,3 +6,141 @@ execute:
   echo: true
 ---
 
+# Libraries
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(powerjoin)
+library(glue)
+library(vip)
+library(baguette)
+```
+
+# Data Import/Tidy/Transform
+
+## Reading in data
+
+```{r}
+root  <- 'https://gdex.ucar.edu/dataset/camels/file'
+```
+
+```{r}
+download.file('https://gdex.ucar.edu/dataset/camels/file/camels_attributes_v2.0.pdf', 
+              'data/camels_attributes_v2.0.pdf')
+```
+
+```{r}
+types <- c("clim", "geol", "soil", "topo", "vege", "hydro")
+remote_files  <- glue('{root}/camels_{types}.txt')
+local_files   <- glue('data/camels_{types}.txt')
+walk2(remote_files, local_files, download.file, quiet = TRUE)
+camels <- map(local_files, read_delim, show_col_types = FALSE) 
+camels <- power_full_join(camels ,by = 'gauge_id')
+camels <- map(remote_files, read_delim, show_col_types = FALSE) |> 
+  power_full_join(by = 'gauge_id')
+```
+
+## Cleaning data
+
+```{r}
+visdat::vis_dat(camels)
+```
+```{r}
+cleaned_camels <- camels %>% 
+  drop_na()
+
+cleaned_camels <- cleaned_camels %>%  
+  mutate(logQmean = log(q_mean))
+
+visdat::vis_dat(cleaned_camels)
+```
+
+
+# Data Splitting
+## Set seed, initial split, training/testing
+```{r}
+set.seed(666)
+
+CC_split <- initial_split(cleaned_camels, prop = .80)
+CC_train <- training(CC_split)
+CC_test <- testing(CC_split)
+```
+
+# Feature Engineering 
+## Recipe determination 
+```{r}
+ggplot(cleaned_camels, aes(x = q_mean, y = high_prec_freq)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Q Mean vs High Precip Frequency",
+       x = "Q Mean",
+       y = "High Precip Frequency")
+cor(cleaned_camels$q_mean, cleaned_camels$high_prec_freq, method = "pearson")
+cor.test(cleaned_camels$q_mean, cleaned_camels$high_prec_freq)
+```
+
+## Makin a recipe
+```{r}
+CC_recipe <- recipe(high_prec_freq ~ q_mean, data = CC_train) %>%
+  step_normalize(all_predictors())
+```
+
+# Resampling and Model Testing 
+## 1. Build Samples
+```{r}
+CC_folds <- vfold_cv(CC_train, v = 10)
+```
+
+## 2. Build 3 Candidate Models 
+```{r}
+linear_model <- 
+  linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+```
+```{r}
+rf_model <- 
+  rand_forest(mtry = 1, trees = 500, min_n = 5) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+```
+```{r}
+boost_model <- 
+  boost_tree(trees = 500, 
+             learn_rate = 0.1, 
+             tree_depth = 6, 
+             loss_reduction = 0.01) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression")
+```
+
+## 3. Test the Models 
+```{r}
+models <- list(linear_model, rf_model, boost_model)
+workflow_set <- workflow_set(
+  preproc = list(CC_recipe),
+  models = models
+)
+```
+```{r}
+results <- workflow_map(
+  workflow_set,
+  resamples = CC_folds,
+  metrics = metric_set(rmse, rsq),
+  verbose = TRUE
+)
+autoplot(results)
+```
+## 4. Model Selection 
+```{r}
+
+```
+
+
+
+
+
+
+
+
