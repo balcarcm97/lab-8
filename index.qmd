@@ -1,0 +1,8 @@
+---
+title: "Lab 8"
+author: "Mel Balcarcel Arias"
+format: html
+execute: 
+  echo: true
+---
+
