@@ -15,6 +15,10 @@ library(powerjoin)
 library(glue)
 library(vip)
 library(baguette)
+library(dials)
+library(glmnet)
+library(patchwork)
+library(ggplot2)
 ```
 
 # Data Import/Tidy/Transform
@@ -82,8 +86,10 @@ cor.test(cleaned_camels$q_mean, cleaned_camels$high_prec_freq)
 
 ## Makin a recipe
 ```{r}
-CC_recipe <- recipe(high_prec_freq ~ q_mean, data = CC_train) %>%
-  step_normalize(all_predictors())
+CC_recipe <- recipe(q_mean ~ high_prec_freq + p_mean, data = CC_train) %>%
+  step_impute_mean(all_predictors()) %>%
+  step_normalize(all_predictors()) %>%
+  step_zv(all_predictors())
 ```
 
 # Resampling and Model Testing 
@@ -133,9 +139,160 @@ results <- workflow_map(
 autoplot(results)
 ```
 ## 4. Model Selection 
+The random forest performed the best in both metrics and it makes sense because in class, it seemed like a really powerful and useful model. The fact that it can make many small decision trees instead of focusing on one, likely means that it can come to many useful conclusions. 
+
+# Model Tuning 
+## 1. Build a model for your chosen specification 
 ```{r}
+tunable_rf_model <- 
+  rand_forest(
+    mtry = tune(),
+    min_n = tune(), 
+    trees = 1000
+  ) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+```
+
+## 2. Create a workflow
+```{r}
+rf_workflow <- workflow() %>%
+  add_model(tunable_rf_model) %>%
+  add_recipe(CC_recipe)
+```
+
+## 3. Check the tunable values/ranges
+```{r}
+dials_rf <- extract_parameter_set_dials(rf_workflow)
+dials_rf$object
+```
+
+## 4. Define the search space 
+```{r}
+dials_rf <- finalize(dials_rf, CC_train)
+
+my.grid <- grid_latin_hypercube(
+  dials_rf,
+  size = 25
+)
+```
+
+## 5. Tune the model 
+```{r}
+model_params <-  tune_grid(
+    rf_workflow,
+    resamples = CC_folds,
+    grid = my.grid,
+    metrics = metric_set(rmse, rsq, mae),
+    control = control_grid(save_pred = TRUE)
+  )
+
+autoplot(model_params)
+```
+Because we want low mae and rmse, the # of randomly selected predictors tells us that most values between 0 and 60 work relatively well with the exception of about 35 in mae and 50 in rmse. We want the inverse for rsq in randomly selected predictors and it looks like some values after 30 are not ideal. Looking at minimal node size, between 24 and 25 seems to be the best for mae, rmse, and rsq. 
+
+## 6. Check the skill of the tuned model 
+```{r}
+metrics_rf <- collect_metrics(model_params)
+best_mae_metrics <- metrics_rf %>%
+  filter(.metric == "mae") %>%
+  arrange(mean) 
+top_mae_results <- best_mae_metrics %>%
+  slice_head(n = 5)
+print(top_mae_results)
+```
+```{r}
+best_model_mae <- show_best(model_params, metric = "mae", n = 1)
+print(best_model_mae)
+```
+The best model has a # of randomly selected predictors of 46 and minimum node size of 21. 
+```{r}
+hp_best <- select_best(model_params, metric = "mae")
+```
+
+## 7. Finalize your model 
+```{r}
+final_rf_workflow <- finalize_workflow(rf_workflow, hp_best)
+```
+
+# Final Model verification
+```{r}
+final_fit <- last_fit(final_rf_workflow, CC_split)
+```
+```{r}
+final_metrics <- collect_metrics(final_fit)
+print(final_metrics)
+```
+Given that the range for q_mean is 0.004553165-9.503108088 our rmse of 0.52 is really good because it's relatively small compared to our range. An rsq of 90% is also really good because it means that 90% of the variance can be explained. 
+
+```{r}
+final_predictions <- collect_predictions(final_fit)
+head(final_predictions)
+```
+```{r}
+library(ggplot2)
+
+ggplot(final_predictions, aes(x = q_mean, y = .pred)) +
+  geom_point(aes(color = .pred), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "blue") +
+  scale_color_viridis_c() +
+  labs(
+    x = "Actual Values",
+    y = "Predicted Values",
+    title = "Predicted vs Actual Values",
+    subtitle = "Random Forest Model",
+    caption = "Source: Camels"
+  ) +
+  theme_minimal() 
 
 ```
+# Buidling a map 
+```{r}
+final_fit <- fit(final_rf_workflow, data = cleaned_camels)
+```
+```{r}
+prediction_df <- augment(final_fit, new_data = cleaned_camels) %>%
+  mutate(
+    residual = (q_mean - .pred)^2
+  )
+```
+```{r}
+pred_map <- ggplot(data = prediction_df, aes(x = gauge_lon, y = gauge_lat)) +
+  borders("state", colour = "gray50") +
+  geom_point(aes(color = .pred)) +
+  scale_color_gradient(low = "pink", high = "dodgerblue", name = "Prediction") +
+  ggthemes::theme_map() +
+  labs(title = "Predicted q_mean across CONUS")
+
+```
+```{r}
+resid_map <- ggplot(data = prediction_df, aes(x = gauge_lon, y = gauge_lat)) +
+  borders("state", colour = "gray50") +
+  geom_point(aes(color = residual)) +
+  scale_color_gradient(low = "pink", high = "dodgerblue", name = "Residuals") +
+  ggthemes::theme_map() +
+  labs(title = "Prediction Residuals across CONUS")
+
+```
+```{r}
+combined_map <- pred_map + resid_map
+combined_map
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

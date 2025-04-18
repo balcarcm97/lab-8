@@ -11,7 +11,7 @@
     "href": "index.html",
     "title": "Lab 8",
     "section": "",
-    "text": "library(tidyverse)\n\n── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──\n✔ dplyr     1.1.4     ✔ readr     2.1.5\n✔ forcats   1.0.0     ✔ stringr   1.5.1\n✔ ggplot2   3.5.1     ✔ tibble    3.2.1\n✔ lubridate 1.9.4     ✔ tidyr     1.3.1\n✔ purrr     1.0.4     \n── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──\n✖ dplyr::filter() masks stats::filter()\n✖ dplyr::lag()    masks stats::lag()\nℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors\n\nlibrary(tidymodels)\n\n── Attaching packages ────────────────────────────────────── tidymodels 1.3.0 ──\n✔ broom        1.0.7     ✔ rsample      1.2.1\n✔ dials        1.4.0     ✔ tune         1.3.0\n✔ infer        1.0.7     ✔ workflows    1.2.0\n✔ modeldata    1.4.0     ✔ workflowsets 1.1.0\n✔ parsnip      1.3.1     ✔ yardstick    1.3.2\n✔ recipes      1.2.0     \n── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──\n✖ scales::discard() masks purrr::discard()\n✖ dplyr::filter()   masks stats::filter()\n✖ recipes::fixed()  masks stringr::fixed()\n✖ dplyr::lag()      masks stats::lag()\n✖ yardstick::spec() masks readr::spec()\n✖ recipes::step()   masks stats::step()\n\nlibrary(powerjoin)\nlibrary(glue)\nlibrary(vip)\n\n\nAttaching package: 'vip'\n\nThe following object is masked from 'package:utils':\n\n    vi\n\nlibrary(baguette)"
+    "text": "library(tidyverse)\n\n── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──\n✔ dplyr     1.1.4     ✔ readr     2.1.5\n✔ forcats   1.0.0     ✔ stringr   1.5.1\n✔ ggplot2   3.5.1     ✔ tibble    3.2.1\n✔ lubridate 1.9.4     ✔ tidyr     1.3.1\n✔ purrr     1.0.4     \n── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──\n✖ dplyr::filter() masks stats::filter()\n✖ dplyr::lag()    masks stats::lag()\nℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors\n\nlibrary(tidymodels)\n\n── Attaching packages ────────────────────────────────────── tidymodels 1.3.0 ──\n✔ broom        1.0.7     ✔ rsample      1.2.1\n✔ dials        1.4.0     ✔ tune         1.3.0\n✔ infer        1.0.7     ✔ workflows    1.2.0\n✔ modeldata    1.4.0     ✔ workflowsets 1.1.0\n✔ parsnip      1.3.1     ✔ yardstick    1.3.2\n✔ recipes      1.2.0     \n── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──\n✖ scales::discard() masks purrr::discard()\n✖ dplyr::filter()   masks stats::filter()\n✖ recipes::fixed()  masks stringr::fixed()\n✖ dplyr::lag()      masks stats::lag()\n✖ yardstick::spec() masks readr::spec()\n✖ recipes::step()   masks stats::step()\n\nlibrary(powerjoin)\nlibrary(glue)\nlibrary(vip)\n\n\nAttaching package: 'vip'\n\nThe following object is masked from 'package:utils':\n\n    vi\n\nlibrary(baguette)\nlibrary(dials)\nlibrary(glmnet)\n\nLoading required package: Matrix\n\nAttaching package: 'Matrix'\n\nThe following objects are masked from 'package:tidyr':\n\n    expand, pack, unpack\n\nLoaded glmnet 4.1-8\n\nlibrary(patchwork)\nlibrary(ggplot2)"
   },
   {
     "objectID": "index.html#reading-in-data",
@@ -46,7 +46,7 @@
     "href": "index.html#makin-a-recipe",
     "title": "Lab 8",
     "section": "Makin a recipe",
-    "text": "Makin a recipe\n\nCC_recipe &lt;- recipe(high_prec_freq ~ q_mean, data = CC_train) %&gt;%\n  step_normalize(all_predictors())"
+    "text": "Makin a recipe\n\nCC_recipe &lt;- recipe(q_mean ~ high_prec_freq + p_mean, data = CC_train) %&gt;%\n  step_impute_mean(all_predictors()) %&gt;%\n  step_normalize(all_predictors()) %&gt;%\n  step_zv(all_predictors())"
   },
   {
     "objectID": "index.html#build-samples",
@@ -67,13 +67,62 @@
     "href": "index.html#test-the-models",
     "title": "Lab 8",
     "section": "3. Test the Models",
-    "text": "3. Test the Models\n\nmodels &lt;- list(linear_model, rf_model, boost_model)\nworkflow_set &lt;- workflow_set(\n  preproc = list(CC_recipe),\n  models = models\n)\n\n\nresults &lt;- workflow_map(\n  workflow_set,\n  resamples = CC_folds,\n  metrics = metric_set(rmse, rsq),\n  verbose = TRUE\n)\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 1 of 3 resampling: recipe_linear_reg\n\n\n✔ 1 of 3 resampling: recipe_linear_reg (185ms)\n\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 2 of 3 resampling: recipe_rand_forest\n\n\n✔ 2 of 3 resampling: recipe_rand_forest (842ms)\n\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 3 of 3 resampling: recipe_boost_tree\n\n\n✔ 3 of 3 resampling: recipe_boost_tree (808ms)\n\nautoplot(results)"
+    "text": "3. Test the Models\n\nmodels &lt;- list(linear_model, rf_model, boost_model)\nworkflow_set &lt;- workflow_set(\n  preproc = list(CC_recipe),\n  models = models\n)\n\n\nresults &lt;- workflow_map(\n  workflow_set,\n  resamples = CC_folds,\n  metrics = metric_set(rmse, rsq),\n  verbose = TRUE\n)\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 1 of 3 resampling: recipe_linear_reg\n\n\n✔ 1 of 3 resampling: recipe_linear_reg (262ms)\n\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 2 of 3 resampling: recipe_rand_forest\n\n\n✔ 2 of 3 resampling: recipe_rand_forest (916ms)\n\n\ni   No tuning parameters. `fit_resamples()` will be attempted\n\n\ni 3 of 3 resampling: recipe_boost_tree\n\n\n✔ 3 of 3 resampling: recipe_boost_tree (994ms)\n\nautoplot(results)"
   },
   {
     "objectID": "index.html#model-selection",
     "href": "index.html#model-selection",
     "title": "Lab 8",
     "section": "4. Model Selection",
-    "text": "4. Model Selection"
+    "text": "4. Model Selection\nThe random forest performed the best in both metrics and it makes sense because in class, it seemed like a really powerful and useful model. The fact that it can make many small decision trees instead of focusing on one, likely means that it can come to many useful conclusions."
+  },
+  {
+    "objectID": "index.html#build-a-model-for-your-chosen-specification",
+    "href": "index.html#build-a-model-for-your-chosen-specification",
+    "title": "Lab 8",
+    "section": "1. Build a model for your chosen specification",
+    "text": "1. Build a model for your chosen specification\n\ntunable_rf_model &lt;- \n  rand_forest(\n    mtry = tune(),\n    min_n = tune(), \n    trees = 1000\n  ) %&gt;%\n  set_engine(\"ranger\") %&gt;%\n  set_mode(\"regression\")"
+  },
+  {
+    "objectID": "index.html#create-a-workflow",
+    "href": "index.html#create-a-workflow",
+    "title": "Lab 8",
+    "section": "2. Create a workflow",
+    "text": "2. Create a workflow\n\nrf_workflow &lt;- workflow() %&gt;%\n  add_model(tunable_rf_model) %&gt;%\n  add_recipe(CC_recipe)"
+  },
+  {
+    "objectID": "index.html#check-the-tunable-valuesranges",
+    "href": "index.html#check-the-tunable-valuesranges",
+    "title": "Lab 8",
+    "section": "3. Check the tunable values/ranges",
+    "text": "3. Check the tunable values/ranges\n\ndials_rf &lt;- extract_parameter_set_dials(rf_workflow)\ndials_rf$object\n\n[[1]]\n\n\n# Randomly Selected Predictors (quantitative)\n\n\nRange: [1, ?]\n\n\n\n[[2]]\n\n\nMinimal Node Size (quantitative)\n\n\nRange: [2, 40]"
+  },
+  {
+    "objectID": "index.html#define-the-search-space",
+    "href": "index.html#define-the-search-space",
+    "title": "Lab 8",
+    "section": "4. Define the search space",
+    "text": "4. Define the search space\n\ndials_rf &lt;- finalize(dials_rf, CC_train)\n\nmy.grid &lt;- grid_latin_hypercube(\n  dials_rf,\n  size = 25\n)\n\nWarning: `grid_latin_hypercube()` was deprecated in dials 1.3.0.\nℹ Please use `grid_space_filling()` instead."
+  },
+  {
+    "objectID": "index.html#tune-the-model",
+    "href": "index.html#tune-the-model",
+    "title": "Lab 8",
+    "section": "5. Tune the model",
+    "text": "5. Tune the model\n\nmodel_params &lt;-  tune_grid(\n    rf_workflow,\n    resamples = CC_folds,\n    grid = my.grid,\n    metrics = metric_set(rmse, rsq, mae),\n    control = control_grid(save_pred = TRUE)\n  )\n\n→ A | warning: ! 56 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\n\n\nThere were issues with some computations   A: x1\n\n\n→ B | warning: ! 37 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\n\n\nThere were issues with some computations   A: x1\n→ C | warning: ! 26 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ D | warning: ! 42 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ E | warning: ! 3 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ F | warning: ! 44 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ G | warning: ! 30 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ H | warning: ! 24 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ I | warning: ! 34 columns were requested but there were 2 predictors in the data.\n               ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ J | warning: ! 18 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ K | warning: ! 52 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ L | warning: ! 14 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ M | warning: ! 20 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ N | warning: ! 8 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ O | warning: ! 15 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ P | warning: ! 28 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ Q | warning: ! 46 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ R | warning: ! 5 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ S | warning: ! 57 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ T | warning: ! 39 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ U | warning: ! 49 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ V | warning: ! 32 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\n→ W | warning: ! 7 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1\nThere were issues with some computations   A: x1   B: x1   C: x1   D: x1   E: x…\n→ X | warning: ! 12 columns were requested but there were 2 predictors in the data.\n                ℹ 2 predictors will be used.\nThere were issues with some computations   A: x1   B: x1   C: x1   D: x1   E: x…\nThere were issues with some computations   A: x2   B: x2   C: x2   D: x2   E: x…\nThere were issues with some computations   A: x3   B: x3   C: x3   D: x3   E: x…\nThere were issues with some computations   A: x4   B: x4   C: x4   D: x4   E: x…\nThere were issues with some computations   A: x5   B: x5   C: x5   D: x5   E: x…\nThere were issues with some computations   A: x5   B: x5   C: x5   D: x5   E: x…\nThere were issues with some computations   A: x6   B: x6   C: x6   D: x6   E: x…\nThere were issues with some computations   A: x7   B: x7   C: x7   D: x7   E: x…\nThere were issues with some computations   A: x8   B: x8   C: x8   D: x8   E: x…\nThere were issues with some computations   A: x9   B: x9   C: x9   D: x9   E: x…\nThere were issues with some computations   A: x10   B: x10   C: x9   D: x9   E:…\nThere were issues with some computations   A: x10   B: x10   C: x10   D: x10   …\nThere were issues with some computations   A: x10   B: x10   C: x10   D: x10   …\n\nautoplot(model_params)\n\n\n\n\n\n\n\n\nBecause we want low mae and rmse, the # of randomly selected predictors tells us that most values between 0 and 60 work relatively well with the exception of about 35 in mae and 50 in rmse. We want the inverse for rsq in randomly selected predictors and it looks like some values after 30 are not ideal. Looking at minimal node size, between 24 and 25 seems to be the best for mae, rmse, and rsq."
+  },
+  {
+    "objectID": "index.html#check-the-skill-of-the-tuned-model",
+    "href": "index.html#check-the-skill-of-the-tuned-model",
+    "title": "Lab 8",
+    "section": "6. Check the skill of the tuned model",
+    "text": "6. Check the skill of the tuned model\n\nmetrics_rf &lt;- collect_metrics(model_params)\nbest_mae_metrics &lt;- metrics_rf %&gt;%\n  filter(.metric == \"mae\") %&gt;%\n  arrange(mean) \ntop_mae_results &lt;- best_mae_metrics %&gt;%\n  slice_head(n = 5)\nprint(top_mae_results)\n\n# A tibble: 5 × 8\n   mtry min_n .metric .estimator  mean     n std_err .config              \n  &lt;int&gt; &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;                \n1    20    28 mae     standard   0.346    10  0.0157 Preprocessor1_Model13\n2    57    27 mae     standard   0.346    10  0.0156 Preprocessor1_Model20\n3    15    24 mae     standard   0.347    10  0.0155 Preprocessor1_Model16\n4    56    25 mae     standard   0.347    10  0.0155 Preprocessor1_Model01\n5    34    21 mae     standard   0.347    10  0.0159 Preprocessor1_Model09\n\n\n\nbest_model_mae &lt;- show_best(model_params, metric = \"mae\", n = 1)\nprint(best_model_mae)\n\n# A tibble: 1 × 8\n   mtry min_n .metric .estimator  mean     n std_err .config              \n  &lt;int&gt; &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;                \n1    20    28 mae     standard   0.346    10  0.0157 Preprocessor1_Model13\n\n\nThe best model has a # of randomly selected predictors of 46 and minimum node size of 21.\n\nhp_best &lt;- select_best(model_params, metric = \"mae\")"
+  },
+  {
+    "objectID": "index.html#finalize-your-model",
+    "href": "index.html#finalize-your-model",
+    "title": "Lab 8",
+    "section": "7. Finalize your model",
+    "text": "7. Finalize your model\n\nfinal_rf_workflow &lt;- finalize_workflow(rf_workflow, hp_best)"
   }
 ]
